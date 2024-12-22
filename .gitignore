@@ -1,0 +1,6 @@
+# Jupyter Lab 
+.ipynb_checkpoints
+Jupyter Lab.bat
+
+# python
+__pycache__
