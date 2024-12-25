@@ -331,11 +331,9 @@ class PermutohedralLattice(object):
             # print(remainder * self.d1 + self.rank[:-1])
             # print(self.canonical)
             # print(self.key.shape, self.rank.shape, self.greedy.shape)
-            for i in range(len(self.key)):
-                self.key[i] = self.greedy[i] + \
-                    self.canonical[int(remainder * self.d1 + self.rank[i])]
-            # self.key[:-1] = self.greedy[:-1] + \
-            #     self.canonical[remainder * self.d1 + self.rank[:-1]]
+            self.key[:-1] = self.greedy[:-1] + \
+                self.canonical[(remainder * self.d1 +
+                                self.rank[:-1]).astype(np.int32)]
 
             # Retrieve pointer to the value at this vertex.
             hash_idx = self.hash_table.lookup(self.key, True)
