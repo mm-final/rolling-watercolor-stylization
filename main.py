@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import stroke
 from permutohedral import PermutohedralLattice
 
 
@@ -56,6 +57,7 @@ for i in range(iteration_time):
         origin_img = origin_img.astype(np.float32)
     else:
         temp = filter.permutohedralfilter(origin_img, temp)
+
         if filter_buffer != []:
             for j in range(len(filter_buffer)):
                 print(i, "==", j, ":", (temp == filter_buffer[j]).all())
@@ -66,4 +68,15 @@ for i in range(2):
     for j in range(2):
         print(filter_buffer[2*i+j].max(), filter_buffer[2*i+j].min())
         ax[i, j].imshow(filter_buffer[2*i+j] / 255)
+
+
+# permutohedralfilter output normalize `float64`, cast back to `uint8`
+temp = (temp * 255).astype(np.uint8)
+
+# add stroke by rolling edge detecion
+temp = stroke.rolling_edge_detection(temp, 4)
+
+
+plt.imshow(temp)
+
 plt.show()
