@@ -42,7 +42,7 @@ origin_img = cv2.imread(f"{image_dir}/{image_name}")
 b, g, r = cv2.split(origin_img)
 origin_img = cv2.merge([r, g, b])
 
-iteration_time = 4
+iteration_time = 2
 sigma_s = 3
 sigma_r = 25.5
 filter = Joint_bilateral_filter(sigma_s, sigma_r)
@@ -63,20 +63,26 @@ for i in range(iteration_time):
                 print(i, "==", j, ":", (temp == filter_buffer[j]).all())
         filter_buffer.append(temp.copy())
 
-fig, ax = plt.subplots(2, 2)
-for i in range(2):
-    for j in range(2):
-        print(filter_buffer[2*i+j].max(), filter_buffer[2*i+j].min())
-        ax[i, j].imshow(filter_buffer[2*i+j] / 255)
+# fig, ax = plt.subplots(2, 2)
+# for i in range(2):
+#     for j in range(2):
+        # print(filter_buffer[2*i+j].max(), filter_buffer[2*i+j].min())
+        # ax[i, j].imshow(filter_buffer[2*i+j] / 255)
 
 
-# permutohedralfilter output normalize `float64`, cast back to `uint8`
-temp = (temp * 255).astype(np.uint8)
 
-# add stroke by rolling edge detecion
-temp = stroke.rolling_edge_detection(temp, 4)
+# output is now in `filter_buffer[3]`
+plt.imshow(filter_buffer[1] / 255)
+
+# permutohedralfilter output `float64`(0-255), cast back to `uint8`
+result = (filter_buffer[1]).astype(np.uint8)
+
+# stroke_img = stroke.rolling_edge_detection(result, 4)
+# stroke_img = stroke.ditering(result, 0.85)
+result = stroke.ditering(result, 0.001)
 
 
-plt.imshow(temp)
+# result = cv2.add(result, stroke_img)
 
+plt.imshow(result)
 plt.show()
