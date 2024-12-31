@@ -1,4 +1,5 @@
 import numpy as np
+import cv2
 from time import time
 import logging
 from ctypes import c_longlong as ll
@@ -120,7 +121,7 @@ class HashTablePermutohedral(object):
             if self.entries[i]['key_idx'] == -1:
                 continue
             h = self._hash(
-                self.keys[self.entries[i]['key_idx']:self.entries[i]['key_idx'] + self.kd]
+                self.keys[self.entries[i]['key_idx']                          :self.entries[i]['key_idx'] + self.kd]
             ) % self.capacity
             while new_entries[h]['key_idx'] != -1:
                 h += 1
