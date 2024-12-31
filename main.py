@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-import stroke
+import paper
 from permutohedral import PermutohedralLattice
 
 
@@ -35,7 +35,9 @@ class Joint_bilateral_filter(object):
 
 
 image_dir = "images"
-image_name = "scale_aware_g4.png"
+
+image_name = "scale_aware_b4.png" # for paper texture testing
+paper_name = "oil_paper.png"
 
 origin_img = cv2.imread(f"{image_dir}/{image_name}")
 origin_shape = origin_img.shape
@@ -146,12 +148,26 @@ def texture(image, sigma=BG_SIGMA, turbulence=2):
     return cut.astype(np.uint8)
 
 
-img = origin_img
+if paper_name == "":
+  img = origin_img
 
-img = texture(img, sigma=4, turbulence=2)
+  img = texture(img, sigma=4, turbulence=2)
 
-img = cv2.resize(img, dsize=(
-    origin_shape[1], origin_shape[0]), interpolation=cv2.INTER_LINEAR)
+  img = cv2.resize(img, dsize=(
+      origin_shape[1], origin_shape[0]), interpolation=cv2.INTER_LINEAR)
 
-plt.imshow(img)
+  plt.imshow(img)
+else:
+  # result = filter_buffer[3] # for fast testing paper texture
+  result = origin_img
+
+  paper_img = cv2.imread(f"{image_dir}/{paper_name}")
+
+  # permutohedralfilter output `float64`(0-255) in filter_buffer[iteration_time], cast back to `uint8`
+  result = result.astype(np.uint8)
+  result = paper.draw_to_paper(result, paper_img)
+
+
+  plt.imshow(result)
+  
 plt.show()

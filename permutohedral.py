@@ -2,6 +2,8 @@ import numpy as np
 import cv2
 from time import time
 import logging
+from ctypes import c_longlong as ll
+
 
 log = logging.getLogger(__name__)
 
@@ -92,10 +94,10 @@ class HashTablePermutohedral(object):
             return offset
 
     def _hash(self, key):
-        k = 0
+        k = ll(0)
         for i in range(self.kd):
             k += key[i]
-            k *= 2531011
+            k *= ll(2531011)
         return k
 
     def _grow(self):
