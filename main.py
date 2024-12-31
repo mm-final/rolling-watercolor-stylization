@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-import stroke
+import paper
 from permutohedral import PermutohedralLattice
 
 
@@ -35,14 +35,15 @@ class Joint_bilateral_filter(object):
 
 
 image_dir = "images"
-image_name = "image.png"
+image_name = "scale_aware_b4.png" # for paper texture testing
+paper_name = "oil_paper.png"
 
 origin_img = cv2.imread(f"{image_dir}/{image_name}")
 
 b, g, r = cv2.split(origin_img)
 origin_img = cv2.merge([r, g, b])
 
-iteration_time = 4
+iteration_time = 0
 sigma_s = 3
 sigma_r = 25.5
 filter = Joint_bilateral_filter(sigma_s, sigma_r)
@@ -63,20 +64,23 @@ for i in range(iteration_time):
                 print(i, "==", j, ":", (temp == filter_buffer[j]).all())
         filter_buffer.append(temp.copy())
 
-fig, ax = plt.subplots(2, 2)
-for i in range(2):
-    for j in range(2):
-        print(filter_buffer[2*i+j].max(), filter_buffer[2*i+j].min())
-        ax[i, j].imshow(filter_buffer[2*i+j] / 255)
+
+# fig, ax = plt.subplots(2, 2)
+# for i in range(2):
+#     for j in range(2):
+#         print(filter_buffer[2*i+j].max(), filter_buffer[2*i+j].min())
+#         ax[i, j].imshow(filter_buffer[2*i+j] / 255)
+
+# result = filter_buffer[3] # for fast testing paper texture
+result = origin_img
+
+ 
+paper_img = cv2.imread(f"{image_dir}/{paper_name}")
+
+# permutohedralfilter output `float64`(0-255) in filter_buffer[iteration_time], cast back to `uint8`
+result = result.astype(np.uint8)
+result = paper.draw_to_paper(result, paper_img)
 
 
-# permutohedralfilter output normalize `float64`, cast back to `uint8`
-temp = (temp * 255).astype(np.uint8)
-
-# add stroke by rolling edge detecion
-temp = stroke.rolling_edge_detection(temp, 4)
-
-
-plt.imshow(temp)
-
+plt.imshow(result / 255)
 plt.show()

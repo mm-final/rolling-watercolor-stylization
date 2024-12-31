@@ -2,5 +2,8 @@
 .ipynb_checkpoints
 Jupyter Lab.bat
 
+*.png
+*.jpg
+
 # python
 __pycache__
