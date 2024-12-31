@@ -35,33 +35,36 @@ class Joint_bilateral_filter(object):
 
 
 image_dir = "images"
-image_name = "image.png"
+image_name = "scale_aware_b4.png" # testing
+
 
 origin_img = cv2.imread(f"{image_dir}/{image_name}")
 
 b, g, r = cv2.split(origin_img)
 origin_img = cv2.merge([r, g, b])
 
-iteration_time = 2
-sigma_s = 3
-sigma_r = 25.5
-filter = Joint_bilateral_filter(sigma_s, sigma_r)
+# iteration_time = 4
+# iteration_time = 2
+# sigma_s = 3
+# sigma_r = 25.5
+# filter = Joint_bilateral_filter(sigma_s, sigma_r)
 
-filter_buffer = []
+filter_buffer = [0, 0]
 
-for i in range(iteration_time):
-    if i == 0:
-        temp = cv2.GaussianBlur(origin_img, (0, 0), sigma_s, sigma_s)
-        filter_buffer.append(temp.copy())
-        origin_img = origin_img / 255.
-        origin_img = origin_img.astype(np.float32)
-    else:
-        temp = filter.permutohedralfilter(origin_img, temp)
+# for i in range(iteration_time):
+#     if i == 0:
+#         temp = cv2.GaussianBlur(origin_img, (0, 0), sigma_s, sigma_s)
+#         filter_buffer.append(temp.copy())
+#         origin_img = origin_img / 255.
+#         origin_img = origin_img.astype(np.float32)
+#     else:
+#         temp = filter.permutohedralfilter(origin_img, temp)
 
-        if filter_buffer != []:
-            for j in range(len(filter_buffer)):
-                print(i, "==", j, ":", (temp == filter_buffer[j]).all())
-        filter_buffer.append(temp.copy())
+#         if filter_buffer != []:
+#             for j in range(len(filter_buffer)):
+#                 print(i, "==", j, ":", (temp == filter_buffer[j]).all())
+#         filter_buffer.append(temp.copy())
+
 
 # fig, ax = plt.subplots(2, 2)
 # for i in range(2):
@@ -71,18 +74,24 @@ for i in range(iteration_time):
 
 
 
+filter_buffer[1] = origin_img
+
+
 # output is now in `filter_buffer[3]`
 plt.imshow(filter_buffer[1] / 255)
 
 # permutohedralfilter output `float64`(0-255), cast back to `uint8`
 result = (filter_buffer[1]).astype(np.uint8)
 
-# stroke_img = stroke.rolling_edge_detection(result, 4)
-# stroke_img = stroke.ditering(result, 0.85)
-result = stroke.ditering(result, 0.001)
+# stroke_img = stroke.rolling_edge_detection(result, 0)
+# stroke_img = stroke.edge_seperation(stroke_img)
+
+stroke_img = stroke.ditering(result, 0.85)
+# result = stroke.ditering(result, 0.001)
 
 
 # result = cv2.add(result, stroke_img)
 
-plt.imshow(result)
+# plt.imshow(result)
+plt.imshow(stroke_img)
 plt.show()
