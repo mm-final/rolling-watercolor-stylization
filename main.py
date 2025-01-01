@@ -5,6 +5,7 @@ import paper
 from permutohedral import PermutohedralLattice
 
 import argparse
+import sys
 
 
 class Joint_bilateral_filter(object):
@@ -38,10 +39,10 @@ class Joint_bilateral_filter(object):
 
 
 
-parser = argparse.ArgumentParser(description="A script for demonstrating argparse.")
-parser.add_argument("--source", type=str, required=True, help="source image to be watercolored")
-parser.add_argument("--paper", type=str, default="", help="paper be colored on")
-parser.add_argument("--roll-time", type=int, default=4, help="rolling time of guidance filter")
+parser = argparse.ArgumentParser(description="Waterpaint your picture on any paper. Put both image in `images` directory to start.")
+parser.add_argument("--source", type=str, required=True, help="source image that apply colors")
+parser.add_argument("--paper", type=str, default="", help="paper be colored")
+parser.add_argument("--roll-time", type=int, default=3, help="rolling time of guidance filter")
 args = parser.parse_args()
 
 image_dir = "images"
@@ -49,6 +50,8 @@ image_name = args.source # for paper texture testing
 paper_name = args.paper
 
 origin_img = cv2.imread(f"{image_dir}/{image_name}")
+if origin_img is None:
+    sys.exit(f"ERROR: can't open {image_dir}/{image_name}!")
 origin_shape = origin_img.shape
 origin_img = cv2.resize(origin_img, dsize=(
     512, 512), interpolation=cv2.INTER_LINEAR)
@@ -56,7 +59,7 @@ origin_img = cv2.resize(origin_img, dsize=(
 b, g, r = cv2.split(origin_img)
 origin_img = cv2.merge([r, g, b])
 
-iteration_time = args.roll_time
+iteration_time = 1 + args.roll_time
 sigma_s = 3
 sigma_r = 25.5
 filter = Joint_bilateral_filter(sigma_s, sigma_r)
@@ -73,8 +76,9 @@ for i in range(iteration_time):
         temp = filter.permutohedralfilter(origin_img, temp)
 
         if filter_buffer != []:
-            for j in range(len(filter_buffer)):
-                print(i, "==", j, ":", (temp == filter_buffer[j]).all())
+            # for j in range(len(filter_buffer)):
+            #     print(i, "==", j, ":", (temp == filter_buffer[j]).all())
+            print(f"{i}-th rolling finished.")
         filter_buffer.append(temp.copy())
 
 # fig, ax = plt.subplots(2, 2)
@@ -82,12 +86,6 @@ for i in range(iteration_time):
 #     for j in range(2):
 #         print(filter_buffer[2*i+j].max(), filter_buffer[2*i+j].min())
 #         ax[i, j].imshow(filter_buffer[2*i+j] / 255)
-
-# permutohedralfilter output normalize `float64`, cast back to `uint8`
-# temp = (filter_buffer[3]).astype(np.uint8)
-
-# add stroke by rolling edge detecion
-# temp = stroke.rolling_edge_detection(temp, 4)
 
 
 BG_COLOR = 209
@@ -157,26 +155,25 @@ def texture(image, sigma=BG_SIGMA, turbulence=2):
     return cut.astype(np.uint8)
 
 
+img = filter_buffer[iteration_time -1] # for fast testing paper texture
+
 if paper_name == "":
-    img = origin_img
 
     img = texture(img, sigma=4, turbulence=2)
 
     img = cv2.resize(img, dsize=(
         origin_shape[1], origin_shape[0]), interpolation=cv2.INTER_LINEAR)
 
-    plt.imshow(img)
 else:
-    # result = filter_buffer[3] # for fast testing paper texture
-    result = origin_img
 
     paper_img = cv2.imread(f"{image_dir}/{paper_name}")
-
+    if paper_img is None:
+        sys.exit(f"ERROR: can't open {image_dir}/{image_name}!")
+        
     # permutohedralfilter output `float64`(0-255) in filter_buffer[iteration_time], cast back to `uint8`
-    result = result.astype(np.uint8)
-    result = paper.draw_to_paper(result, paper_img)
+    img = img.astype(np.uint8)
+    img = paper.draw_to_paper(img, paper_img)
 
 
-    plt.imshow(result)
-  
+plt.imshow(img)
 plt.show()
