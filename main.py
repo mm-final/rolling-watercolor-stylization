@@ -12,7 +12,7 @@ dpg.create_viewport(title='Custom Title', width=1280, height=768)
 
 image_dir = "images"
 
-image_name = "scale_aware_b4.png"
+image_name = "scale_aware_b1.png"
 # paper_name = "paper.jpg"
 
 # origin_img
@@ -135,11 +135,14 @@ with dpg.window(
     )
 
     def start_texturing(sender):
-        global paper_img, origin_img
+        global paper_img, origin_img, raw_data
 
         if paper_img is None:
             origin_shape = origin_img.shape
-            result = cv2.resize(origin_img, dsize=(
+            new_arr = np.array(raw_data)[np.mod(
+                np.arange(np.asarray(raw_data).size) + 1, 4) != 0]
+            new_arr = new_arr.reshape(origin_shape)
+            result = cv2.resize(new_arr, dsize=(
                 512, 512), interpolation=cv2.INTER_LINEAR)
 
             result = noise_texture.texture(result*255, sigma=4, turbulence=4)
@@ -152,8 +155,12 @@ with dpg.window(
             update_image(image)
 
         else:
+            origin_shape = origin_img.shape
+            new_arr = np.array(raw_data)[np.mod(
+                np.arange(np.asarray(raw_data).size) + 1, 4) != 0]
+            new_arr = new_arr.reshape(origin_shape)
             # permutohedralfilter output `float64`(0-255) in filter_buffer[iteration_time], cast back to `uint8`
-            result = origin_img * 255
+            result = new_arr * 255
             result = result.astype(np.uint8)
             result = paper.draw_to_paper(result, paper_img)
 
