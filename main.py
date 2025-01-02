@@ -65,12 +65,12 @@ color_change_debug = 0
 
 def set_sigma_s(sender):
     sigma_s = dpg.get_value("SliderFloat1")
-    print(f's:{sigma_s}')
+    update_log(f's:{sigma_s}')
 
 
 def set_sigma_r(sender):
     sigma_r = dpg.get_value("SliderFloat2")
-    print(f'r:{sigma_r}')
+    update_log(f'r:{sigma_r}')
 
 
 with dpg.window(
@@ -90,19 +90,21 @@ with dpg.window(
     dpg.add_slider_float(
         tag="SliderFloat2",
         default_value=.1,
-        max_value=10,
+        max_value=5,
         pos=(posx, 80),
         callback=set_sigma_r
     )
 
     def start_rolling():
         global sigma_r, sigma_s, origin_img, rgb_channel, rgba_channel, color_change_debug
+        update_log("start rolling")
+
         image = cv2.ximgproc.rollingGuidanceFilter(
             origin_img, sigmaColor=dpg.get_value("SliderFloat2"), sigmaSpace=dpg.get_value("SliderFloat1"))
         image = np.ravel(image)
         update_image(image)
 
-        print('finish rolling')
+        update_log('finish rolling')
 
     dpg.add_text('start rolling', pos=(posx, 100))
     dpg.add_button(label="start", width=80,
@@ -125,7 +127,7 @@ with dpg.window(
                 dpg.add_image("image", show=True, tag='image_data', pos=(10, 30), width=image_width, 
                     height=image_height, parent="Image Win"
                 )
-                print("load source image successfully")
+                update_log("load source image successfully")
                 break
     
     def cancel_pt(sender, app_data):
@@ -154,7 +156,7 @@ with dpg.window(
             for fn in selections:
                 paper_img = cv2.imread(selections[fn])
                 # paper_img = cv2.imread(f"{image_dir}/{paper_name}")
-                print("load paper texture successfully")
+                update_log("load paper texture successfully")
                 break
 
     def cancel_pt(sender, app_data):
@@ -172,6 +174,7 @@ with dpg.window(
 
     def start_texturing(sender):
         global paper_img, origin_img, raw_data
+        update_log("start texturing")
 
         if paper_img is None:
             origin_shape = origin_img.shape
@@ -203,7 +206,7 @@ with dpg.window(
             image = np.ravel(result / 255.)
             update_image(image)
 
-        print("finish texturing")
+        update_log("finish texturing")
 
     dpg.add_button(label="start", width=80,
                    pos=(posx, 40), callback=start_texturing)
@@ -219,9 +222,18 @@ with dpg.window(
         data = np.asarray(raw_data) * 255
         dpg.save_image(file="newImage.png",
                        width=origin_img.shape[1], height=origin_img.shape[0], data=data)
+        update_log('Result saved as `newImage.png`')
 
     dpg.add_button(label="save", width=80,
                    pos=(posx, 20), callback=save_image)
+
+    def update_log(log_message): # make log show new message
+        dpg.set_value("log", log_message)
+
+    dpg.add_text("Log", pos=(10, 80))
+    dpg.add_text('I record want is done!', tag='log', pos=(25, 100))
+
+
 
 with dpg.window(
     label='Image', pos=(512, 0), tag='Image Win',
