@@ -39,7 +39,7 @@ def draw_to_paper(cv2_color_img, cv2_paper_img):
             img[y][x] = np.round(img[y][x] * (paper_img[y][x] / 255)) # change color by paper gray amplitude
 
 
-    return gamma_correction(img, 1.4)
+    return gamma_correction(img, 1.2)
 
 
 

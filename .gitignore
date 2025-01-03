@@ -2,8 +2,12 @@
 .ipynb_checkpoints
 Jupyter Lab.bat
 
+# user test image
 *.png
 *.jpg
+
+# defualt input image
+!images/curious_cat.jpg
 
 # python
 __pycache__

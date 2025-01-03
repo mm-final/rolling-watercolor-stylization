@@ -2,172 +2,248 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import paper
-from permutohedral import PermutohedralLattice
+import dearpygui.dearpygui as dpg
+from array import array
+import noise_texture
+
+dpg.create_context()
+dpg.create_viewport(title='Rolling Watercolor Stylization', width=1280, height=768)
 
 
-class Joint_bilateral_filter(object):
-    def __init__(self, sigma_s, sigma_r):
-        self.sigma_r = sigma_r
-        self.sigma_s = sigma_s
+origin_img = None
+image_width, image_height, rgb_channel, rgba_channel = None, None, 3, 4
+image_pixels = None
+raw_data = None
 
-    def permutohedralfilter(self, img, ref):
+def open_and_set_origin_image(img_path):
+    global origin_img, image_width, image_height, rgb_channel, rgba_channel, image_pixels, raw_data
+    origin_img = cv2.imread(img_path)
+    b, g, r = cv2.split(origin_img) # origin_img preprocessing
+    origin_img = cv2.merge([r, g, b])
+    origin_img = origin_img / 255.
+    origin_img = origin_img.astype(np.float32)
 
-        invSpatialStdev = float(1.0/self.sigma_s)
-        invColorStdev = float(1.0/self.sigma_r)
+    # reset global variables
+    image_width, image_height = origin_img.shape[1], origin_img.shape[0]
+    image_pixels = image_height * image_width
+    raw_data_size = image_width * image_height * rgba_channel
+    raw_data = array('f', [1.] * raw_data_size)
 
-        # Construct the position vectors out of x, y, r, g, and b.
-        height = img.shape[0]
-        width = img.shape[1]
-
-        eCh = ref.shape[2]
-        positions = np.zeros((height, width, 2+eCh), dtype=np.float32)
-
-        # From Mat to Image
-        for y in range(height):
-            for x in range(width):
-                positions[y, x, 0] = invSpatialStdev * x
-                positions[y, x, 1] = invSpatialStdev * y
-                positions[y, x, 2:-1] = invColorStdev * ref[y, x, :-1]
-
-        out = PermutohedralLattice.filter(img, positions)
-
-        return out * 255
+open_and_set_origin_image("images/curious_cat.jpg")
 
 
-image_dir = "images"
+# paper_img
+paper_img = None
 
-image_name = "scale_aware_b4.png" # for paper texture testing
-paper_name = "oil_paper.png"
-
-origin_img = cv2.imread(f"{image_dir}/{image_name}")
-origin_shape = origin_img.shape
-origin_img = cv2.resize(origin_img, dsize=(
-    512, 512), interpolation=cv2.INTER_LINEAR)
-
-b, g, r = cv2.split(origin_img)
-origin_img = cv2.merge([r, g, b])
-
-iteration_time = 0
-sigma_s = 3
-sigma_r = 25.5
-filter = Joint_bilateral_filter(sigma_s, sigma_r)
-
-filter_buffer = []
-
-for i in range(iteration_time):
-    if i == 0:
-        temp = cv2.GaussianBlur(origin_img, (0, 0), sigma_s, sigma_s)
-        filter_buffer.append(temp.copy())
-        origin_img = origin_img / 255.
-        origin_img = origin_img.astype(np.float32)
-    else:
-        temp = filter.permutohedralfilter(origin_img, temp)
-
-        if filter_buffer != []:
-            for j in range(len(filter_buffer)):
-                print(i, "==", j, ":", (temp == filter_buffer[j]).all())
-        filter_buffer.append(temp.copy())
-
-# fig, ax = plt.subplots(2, 2)
-# for i in range(2):
-#     for j in range(2):
-#         print(filter_buffer[2*i+j].max(), filter_buffer[2*i+j].min())
-#         ax[i, j].imshow(filter_buffer[2*i+j] / 255)
-
-# permutohedralfilter output normalize `float64`, cast back to `uint8`
-# temp = (filter_buffer[3]).astype(np.uint8)
-
-# add stroke by rolling edge detecion
-# temp = stroke.rolling_edge_detection(temp, 4)
+iteration_time = 4
+# b4 s 1 r 0-5
+sigma_s = 10
+sigma_r = 0.1
 
 
-BG_COLOR = 209
-BG_SIGMA = 5
-MONOCHROME = 1
+texture_format = dpg.mvFormat_Float_rgba
+dpg.add_texture_registry(tag="texture_registry", show=False) # use texture_registry for texture removal/addition
+dpg.add_raw_texture(
+    width=image_width, height=image_height, default_value=raw_data,
+    format=texture_format, tag="image", parent="texture_registry"
+)
 
 
-def blank_image(width=1024, height=1024, background=BG_COLOR):
-    """
-    It creates a blank image of the given background color
-    """
-    img = np.full((height, width, MONOCHROME), background, np.uint8)
-    return img
+def update_image(new_image):
+    global raw_data, image_pixels, rgb_channel, rgba_channel
+    for i in range(0, image_pixels):
+        rd_base, im_base = i * rgba_channel, i * rgb_channel
+        raw_data[rd_base:rd_base + rgb_channel] = array(
+            'f', new_image[im_base:im_base + rgb_channel]
+        )
 
 
-def add_noise(img, sigma=BG_SIGMA):
-    """
-    Adds noise to the existing image
-    """
-    width, height, ch = img.shape
-    n = noise(width, height, sigma=sigma)
-    img = img + n
-    return img.clip(0, 255)
+width, height = 512, 768
+posx, posy = 20, 0
+color_change_debug = 0
 
 
-def noise(width, height, ratio=1, sigma=BG_SIGMA):
-    """
-    The function generates an image, filled with gaussian nose. If ratio parameter is specified,
-    noise will be generated for a lesser image and then it will be upscaled to the original size.
-    In that case noise will generate larger square patterns. To avoid multiple lines, the upscale
-    uses interpolation.
-
-    :param ratio: the size of generated noise "pixels"
-    :param sigma: defines bounds of noise fluctuations
-    """
-    mean = 0
-    assert width % ratio == 0, "Can't scale image with of size {} and ratio {}".format(
-        width, ratio)
-    assert height % ratio == 0, "Can't scale image with of size {} and ratio {}".format(
-        height, ratio)
-
-    h = int(height / ratio)
-    w = int(width / ratio)
-
-    result = np.random.normal(mean, sigma, (w, h, MONOCHROME))
-    if ratio > 1:
-        result = cv2.resize(result, dsize=(width, height),
-                            interpolation=cv2.INTER_LINEAR)
-    return result.reshape((width, height, MONOCHROME))
+def set_sigma_s(sender):
+    sigma_s = dpg.get_value("SliderFloat1")
+    update_log(f's:{sigma_s}')
 
 
-def texture(image, sigma=BG_SIGMA, turbulence=2):
-    """
-    Consequently applies noise patterns to the original image from big to small.
-
-    sigma: defines bounds of noise fluctuations
-    turbulence: defines how quickly big patterns will be replaced with the small ones. The lower
-    value - the more iterations will be performed during texture generation.
-    """
-    result = image.astype(float)
-    cols, rows, ch = image.shape
-    ratio = cols
-    while not ratio == 1:
-        result += noise(cols, rows, ratio, sigma=sigma)
-        ratio = (ratio // turbulence) or 1
-    cut = np.clip(result, 0, 255)
-    return cut.astype(np.uint8)
+def set_sigma_r(sender):
+    sigma_r = dpg.get_value("SliderFloat2")
+    update_log(f'r:{sigma_r}')
 
 
-if paper_name == "":
-  img = origin_img
+with dpg.window(
+    label='Sigma & Rolling', width=width, height=height/3, pos=(0, posy),
+    no_move=True, no_close=True, no_collapse=True, no_resize=True,
+):
+    dpg.add_text('sigma_s', pos=(posx, 20))
+    dpg.add_slider_float(
+        tag="SliderFloat1",
+        default_value=10,
+        max_value=100,
+        pos=(posx, 40),
+        callback=set_sigma_s
+    )
 
-  img = texture(img, sigma=4, turbulence=2)
+    dpg.add_text('sigma_r', pos=(posx, 60))
+    dpg.add_slider_float(
+        tag="SliderFloat2",
+        default_value=.1,
+        max_value=5,
+        pos=(posx, 80),
+        callback=set_sigma_r
+    )
 
-  img = cv2.resize(img, dsize=(
-      origin_shape[1], origin_shape[0]), interpolation=cv2.INTER_LINEAR)
+    def start_rolling():
+        global sigma_r, sigma_s, origin_img, rgb_channel, rgba_channel, color_change_debug
+        update_log("start rolling")
 
-  plt.imshow(img)
-else:
-  # result = filter_buffer[3] # for fast testing paper texture
-  result = origin_img
+        image = cv2.ximgproc.rollingGuidanceFilter(
+            origin_img, sigmaColor=dpg.get_value("SliderFloat2"), sigmaSpace=dpg.get_value("SliderFloat1"))
+        image = np.ravel(image)
+        update_image(image)
 
-  paper_img = cv2.imread(f"{image_dir}/{paper_name}")
+        update_log('finish rolling')
 
-  # permutohedralfilter output `float64`(0-255) in filter_buffer[iteration_time], cast back to `uint8`
-  result = result.astype(np.uint8)
-  result = paper.draw_to_paper(result, paper_img)
+    dpg.add_text('start rolling', pos=(posx, 100))
+    dpg.add_button(label="start", width=80,
+                   pos=(posx, 120), callback=start_rolling)
 
 
-  plt.imshow(result)
-  
-plt.show()
+    dpg.add_text('change source image', pos=(posx, 150))
+    def select_pt(sender, app_data):
+        global origin_img, image_width, image_height, raw_data, texture_format
+        selections = app_data['selections']
+        if selections:
+            for fn in selections:
+                open_and_set_origin_image(selections[fn])
+                dpg.delete_item('image_data')
+                dpg.delete_item('image')
+                dpg.add_raw_texture(
+                    width=image_width, height=image_height, default_value=raw_data,
+                    format=texture_format, tag="image", parent="texture_registry"
+                )
+                dpg.add_image("image", show=True, tag='image_data', pos=(10, 30), width=image_width, 
+                    height=image_height, parent="Image Win"
+                )
+                update_log("load source image successfully")
+                break
+    
+    def cancel_pt(sender, app_data):
+        ...
+
+    with dpg.file_dialog(
+        directory_selector=False, show=False, callback=select_pt, id='source image selector',
+        cancel_callback=cancel_pt, width=700, height=400
+    ):
+        dpg.add_file_extension('.*')
+    dpg.add_button(
+        label="select image", width=100, callback=lambda: dpg.show_item("source image selector"),
+        pos=(posx, 170),
+    )
+    
+
+with dpg.window(
+    label='Apply Texture', width=width, height=height/3, pos=(0, posy+height/3),
+    no_move=True, no_close=True, no_collapse=True, no_resize=True,
+):
+
+    def select_pt(sender, app_data):
+        global paper_img
+        selections = app_data['selections']
+        if selections:
+            for fn in selections:
+                paper_img = cv2.imread(selections[fn])
+                # paper_img = cv2.imread(f"{image_dir}/{paper_name}")
+                update_log("load paper texture successfully")
+                break
+
+    def cancel_pt(sender, app_data):
+        ...
+
+    with dpg.file_dialog(
+        directory_selector=False, show=False, callback=select_pt, id='paper selector',
+        cancel_callback=cancel_pt, width=700, height=400
+    ):
+        dpg.add_file_extension('.*')
+    dpg.add_button(
+        label="select image", width=100, callback=lambda: dpg.show_item("paper selector"),
+        pos=(posx, 20),
+    )
+
+    def start_texturing(sender):
+        global paper_img, origin_img, raw_data
+        update_log("start texturing")
+
+        if paper_img is None:
+            origin_shape = origin_img.shape
+            new_arr = np.array(raw_data)[np.mod(
+                np.arange(np.asarray(raw_data).size) + 1, 4) != 0]
+            new_arr = new_arr.reshape(origin_shape)
+            result = cv2.resize(new_arr, dsize=(
+                512, 512), interpolation=cv2.INTER_LINEAR)
+
+            result = noise_texture.texture(result*255, sigma=4, turbulence=4)
+            result = result / 255.
+
+            result = cv2.resize(result, dsize=(
+                origin_shape[1], origin_shape[0]), interpolation=cv2.INTER_LINEAR)
+
+            image = np.ravel(result)
+            update_image(image)
+
+        else:
+            origin_shape = origin_img.shape
+            new_arr = np.array(raw_data)[np.mod(
+                np.arange(np.asarray(raw_data).size) + 1, 4) != 0]
+            new_arr = new_arr.reshape(origin_shape)
+            # permutohedralfilter output `float64`(0-255) in filter_buffer[iteration_time], cast back to `uint8`
+            result = new_arr * 255
+            result = result.astype(np.uint8)
+            result = paper.draw_to_paper(result, paper_img)
+
+            image = np.ravel(result / 255.)
+            update_image(image)
+
+        update_log("finish texturing")
+
+    dpg.add_button(label="start", width=80,
+                   pos=(posx, 40), callback=start_texturing)
+
+
+with dpg.window(
+    label='Save Image', width=width, height=height/3, pos=(0, posy+height/3*2),
+    no_move=True, no_close=True, no_collapse=True, no_resize=True,
+):
+
+    def save_image(sender):
+        global origin_img, raw_data
+        data = np.asarray(raw_data) * 255
+        dpg.save_image(file="newImage.png",
+                       width=origin_img.shape[1], height=origin_img.shape[0], data=data)
+        update_log('Result saved as `newImage.png`')
+
+    dpg.add_button(label="save", width=80,
+                   pos=(posx, 20), callback=save_image)
+
+    def update_log(log_message): # make log show new message
+        dpg.set_value("log", log_message)
+
+    dpg.add_text("Log", pos=(10, 80))
+    dpg.add_text('I record want is done!', tag='log', pos=(25, 100))
+
+
+
+with dpg.window(
+    label='Image', pos=(512, 0), tag='Image Win',
+    no_move=True, no_close=True, no_collapse=True, no_resize=False, width=width*2, height=height
+):
+    dpg.add_image("image", show=True, tag='image_data', pos=(10, 30), width=int(
+        dpg.get_item_width("image")), height=int(dpg.get_item_height("image")))
+
+
+dpg.setup_dearpygui()
+dpg.show_viewport()
+dpg.start_dearpygui()
+dpg.destroy_context()
