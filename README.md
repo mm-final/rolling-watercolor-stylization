@@ -41,4 +41,4 @@ There are 2 approaches when applying Paper Texture:
 1. Have Paper Image:  
    Scaling result image by grayscale value of paper image, then do [gamma correction](https://en.wikipedia.org/wiki/Gamma_correction) to brighten the result back. gamma is $1.2$, fixed.
 2. Don't have Paper Image:  
-   Generate a noise texture by sampling Standard Normal Distribution to a small area, scale it to result size, then do same sampling and scaling  multiple time but to a bigger and bigger area, finally add all the area in to one. This generated texture is directly added to result image and  colors' value are clipped back to $[0,255]$.
+   Generate a noise texture by sampling Standard Normal Distribution to a small area, scale it to result image size, then do same sampling and scaling  multiple time but to a bigger and bigger area, finally add all areas in to one. This generated texture is directly added to result image and  colors' value are clipped back to $[0,255]$.

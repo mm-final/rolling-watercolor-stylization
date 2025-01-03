@@ -8,6 +8,9 @@ Jupyter Lab.bat
 
 # defualt input image
 !images/curious_cat.jpg
+# README image
+!readme_demo_screenshot.png
+
 
 # python
 __pycache__
