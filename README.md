@@ -23,7 +23,7 @@ We stylize your picture into a watercolor-paint-like style!
     python main.py
     ```
 ### Any Tips?
-1. **Apply Texture** section make your result be pained on a paper texture.
+1. **Apply Texture** section paints your result on a paper texture.
     
     Use **select image** button to select your paper image
       - The lower resolution paper image, the coarser the paper looked like in final result. 
