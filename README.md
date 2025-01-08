@@ -36,7 +36,7 @@ We stylize your picture into a watercolor-paint-like style!
     If you don't have paper image, you can press **start** without **select image**. We will generate a paper-like noise map for you. 
 2. Adjusting **sigma_s** and **sigma_r**
  
-    **sigma_s** decides how blurry the image is.  The bigger value, the blurrier code block.   
+    **sigma_s** decides how blurry the image is.  The bigger value, the blurrier color lumps.   
     **sigma_r** decides where are the edges of color blocks. The bigger value, the more differnece between edges are needed to preserve the edge, i.e. *the blurrier at edges*.  
 ### How Stylization is Done?
 Color block effect is done by applying [Rolling Guidance filter](https://www.cse.cuhk.edu.hk/leojia/projects/rollguidance/) to source image.
